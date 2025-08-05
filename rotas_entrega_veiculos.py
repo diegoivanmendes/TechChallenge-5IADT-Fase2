@@ -5,7 +5,9 @@ import matplotlib.pyplot as plt
 num_clientes = 10
 num_veiculos = 3
 capacidade_veiculo = 20
+
 demandas = [7, 3, 7, 4, 6, 4, 7, 5, 8, 2]  # Demandas fixas
+
 tempos_viagem = [
     [0, 10, 15, 20, 12, 18, 10, 14, 16, 19, 11],
     [10, 0, 8, 17, 9, 13, 11, 12, 15, 10, 14],
