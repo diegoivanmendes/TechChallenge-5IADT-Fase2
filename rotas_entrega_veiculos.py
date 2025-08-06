@@ -25,7 +25,7 @@ tempos_viagem = [
 # Parâmetros
 tamanho_populacao = 20
 num_geracoes = 50
-taxa_mutacao = 0.3  # 
+taxa_mutacao = 0.2  # Aumentada para mais exploração
 
 # Gerar cromossomo: cada cliente é atribuído a um veículo (0, 1 ou 2)
 def gerar_cromossomo():
@@ -46,40 +46,25 @@ def calcular_tempo_rota(clientes):
     tempo += tempos_viagem[clientes[-1]][0]  # Último cliente ao depósito
     return tempo
 
-# Calcular aptidão: inverso do tempo total ao quadrado
+# Calcula aptidão de um cromossomo (maior = melhor)
 def calcular_aptidao(cromossomo):
-    cargas = [0] * num_veiculos
-    rotas = [[] for _ in range(num_veiculos)]
-    for cliente, veiculo in enumerate(cromossomo):
-        cargas[veiculo] += demandas[cliente]
-        rotas[veiculo].append(cliente + 1)
+    cargas = [0] * num_veiculos  # Carga inicial de cada veículo
+    rotas = [[] for _ in range(num_veiculos)]  # Rotas de cada veículo
+    for i, v in enumerate(cromossomo):  # Atribui clientes aos veículos
+        cargas[v] += demandas[i]  # Soma demanda do cliente
+        rotas[v].append(i + 1)  # Adiciona cliente à rota
 
-    # Reparo simples: mover clientes de veículos sobrecarregados
-    while max(cargas) > capacidade_veiculo:
-        veiculo_max = cargas.index(max(cargas))
-        veiculo_min = cargas.index(min(cargas))
-        clientes_max = [i for i, v in enumerate(cromossomo) if v == veiculo_max]
-        if clientes_max:
-            cliente = random.choice(clientes_max)
-            cromossomo[cliente] = veiculo_min
-            cargas[veiculo_max] -= demandas[cliente]
-            cargas[veiculo_min] += demandas[cliente]
-            rotas[veiculo_max].remove(cliente + 1)
-            rotas[veiculo_min].append(cliente + 1)
+    tempo_total = sum(calcular_tempo_rota(rota) for rota in rotas)  # Tempo total das rotas
+    penalidade = sum(max(0, carga - capacidade_veiculo) for carga in cargas) * 1000  # Penaliza sobrecarga
+    return 10000 / (tempo_total + penalidade) ** 2  # Aptidão: menor com sobrecarga
+    # Exemplo: tempo_total = 150, sem sobrecarga → aptidão ≈ 0.444
+    #          tempo_total = 150, sobrecarga de 5 → penalidade = 5000, aptidão ≈ 0.0004
 
-    tempo_total = sum(calcular_tempo_rota(rota) for rota in rotas)
-    return 10000 / (tempo_total ** 2)  # Amplifica diferenças
-
-# Seleção por roleta: maior aptidão tem mais chance
-def selecao_roleta(populacao, aptidoes):
-    total_aptidao = sum(aptidoes)
-    pick = random.uniform(0, total_aptidao)
-    atual = 0
-    for cromossomo, aptidao in zip(populacao, aptidoes):
-        atual += aptidao
-        if atual >= pick:
-            return cromossomo
-    return random.choice(populacao)  # Fallback
+# Seleção por torneio: escolhe o melhor de um grupo aleatório
+def selecao_torneio(populacao, aptidoes, tamanho_torneio=3):
+    torneio = random.sample(list(zip(populacao, aptidoes)), tamanho_torneio)  # Escolhe tamanho_torneio cromossomos aleatoriamente
+    return max(torneio, key=lambda x: x[1])[0]  # Retorna o cromossomo com maior aptidão
+    # Exemplo: escolhe 3 cromossomos, retorna o que tem maior aptidão
 
 # Cruzamento de ponto único
 def cruzamento(pai1, pai2):
@@ -103,12 +88,14 @@ def algoritmo_genetico():
     historico_tempo_total = []
 
     for geracao in range(num_geracoes):
+      
         aptidoes = [calcular_aptidao(crom) for crom in populacao]
         melhor_aptidao = max(aptidoes)
         melhor_idx = aptidoes.index(melhor_aptidao)
 
         cargas = [0] * num_veiculos
         rotas = [[] for _ in range(num_veiculos)]
+
         for cliente, veiculo in enumerate(populacao[melhor_idx]):
             cargas[veiculo] += demandas[cliente]
             rotas[veiculo].append(cliente + 1)
@@ -119,8 +106,8 @@ def algoritmo_genetico():
 
         nova_populacao = [populacao[melhor_idx]]  # Elitismo
         while len(nova_populacao) < tamanho_populacao:
-            pai1 = selecao_roleta(populacao, aptidoes)
-            pai2 = selecao_roleta(populacao, aptidoes)
+            pai1 = selecao_torneio(populacao, aptidoes)
+            pai2 = selecao_torneio(populacao, aptidoes)
             filho1, filho2 = cruzamento(pai1, pai2)
             filho1 = mutar(filho1)
             filho2 = mutar(filho2)
@@ -132,8 +119,10 @@ def algoritmo_genetico():
     aptidoes = [calcular_aptidao(crom) for crom in populacao]
     melhor_idx = aptidoes.index(max(aptidoes))
     melhor_cromossomo = populacao[melhor_idx]
+    
     cargas = [0] * num_veiculos
     rotas = [[] for _ in range(num_veiculos)]
+
     for cliente, veiculo in enumerate(melhor_cromossomo):
         cargas[veiculo] += demandas[cliente]
         rotas[veiculo].append(cliente + 1)
@@ -157,6 +146,10 @@ def algoritmo_genetico():
 
 if __name__ == '__main__':
     random.seed(42)
-    print(f"Demandas dos clientes: {demandas}")
+
+    print("\nProfessor: Sérgio Polimante");
+    print("    Aluno: Diego Ivan Mendes de Oliveira");
+
+    print(f"\nDemandas dos clientes: {demandas}")
     print(f"Capacidade por veículo: {capacidade_veiculo} unidades")
     algoritmo_genetico()
